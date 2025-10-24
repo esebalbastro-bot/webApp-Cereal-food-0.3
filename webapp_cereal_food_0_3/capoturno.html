@@ -1,0 +1,110 @@
+<!-- PARCIAL: RICHIEDI CAPOTURNO / VICE -->
+<div id="modalCapoturno" class="modal" aria-hidden="true" style="display:none">
+  <div class="card">
+    <h3>Richiedi Capoturno / Vice</h3>
+
+    <div class="field">
+      <div class="label">Destinatario</div>
+      <select id="rc_target" required>
+        <option value="CAPOTURNO">Capoturno</option>
+        <option value="VICE">Vice capoturno</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <div class="label">Linea</div>
+      <input id="rc_linea" class="input" type="text" placeholder="Es. L4 o 4" required />
+    </div>
+
+    <div class="field">
+      <div class="label">Messaggio</div>
+      <textarea id="rc_msg" class="input" style="height:92px; resize:vertical" placeholder="Es. Fermo linea. Guasto Flowpack."></textarea>
+    </div>
+
+    <div class="actions">
+      <button id="rc_close" class="btn btn-ghost" type="button">Chiudi</button>
+      <button id="rc_send"  class="btn btn-primary" type="button">Invia richiesta</button>
+    </div>
+
+    <p id="rc_feedback" class="muted" style="margin-top:10px"></p>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Helpers locales (fallback si no existen en index)
+  const _show = (window.show) || function(el){ el.style.display='grid'; el.setAttribute('aria-hidden','false'); };
+  const _hide = (window.hide) || function(el){ el.style.display='none'; el.setAttribute('aria-hidden','true'); };
+  const _disable = (window.disable) || function(el){ el.disabled=true; el.classList.add('is-loading'); };
+  const _enable  = (window.enable)  || function(el){ el.disabled=false; el.classList.remove('is-loading'); };
+
+  const els = {
+    modal:  document.getElementById('modalCapoturno'),
+    target: document.getElementById('rc_target'),
+    linea:  document.getElementById('rc_linea'),
+    msg:    document.getElementById('rc_msg'),
+    send:   document.getElementById('rc_send'),
+    close:  document.getElementById('rc_close'),
+    fb:     document.getElementById('rc_feedback'),
+    btn:    document.getElementById('btn_capoturno') // botón ya presente en index
+  };
+
+  function openModal(){
+    els.fb.textContent = '';
+    els.target.value = 'CAPOTURNO';
+    els.linea.value = '';
+    els.msg.value = '';
+    _show(els.modal);
+    setTimeout(()=> els.target.focus(), 50);
+  }
+
+  function closeModal(){
+    _hide(els.modal);
+  }
+
+  function sendRequest(){
+    const target = (els.target.value||'').toUpperCase();
+    const linea = (els.linea.value||'').trim();
+    const message = (els.msg.value||'').trim();
+
+    if (!target || !['CAPOTURNO','VICE'].includes(target)) {
+      els.fb.textContent = 'Seleziona il destinatario.';
+      els.fb.style.color = '#b00';
+      return;
+    }
+    if (!linea){
+      els.fb.textContent = 'Inserisci la linea.';
+      els.fb.style.color = '#b00';
+      return;
+    }
+
+    _disable(els.send);
+    els.fb.style.color = '#0a0';
+    els.fb.textContent = 'Invio in corso...';
+
+    google.script.run
+      .withSuccessHandler(function(res){
+        _enable(els.send);
+        if (res && res.ok){
+          els.fb.style.color = '#0a0';
+          els.fb.textContent = res.message || 'Richiesta inviata.';
+          setTimeout(closeModal, 800);
+        } else {
+          els.fb.style.color = '#b00';
+          els.fb.textContent = (res && res.message) || 'Errore nell\'invio.';
+        }
+      })
+      .withFailureHandler(function(err){
+        _enable(els.send);
+        els.fb.style.color = '#b00';
+        els.fb.textContent = 'Errore: ' + ((err && err.message) || err);
+      })
+      .api_requestCapoturno({ target, linea, message });
+  }
+
+  // Bind
+  if (els.btn) els.btn.addEventListener('click', openModal);
+  els.close.addEventListener('click', closeModal);
+  els.send.addEventListener('click', sendRequest);
+})();
+</script>

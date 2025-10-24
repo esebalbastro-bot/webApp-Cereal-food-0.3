@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Cereal Food – Etichette</title>
+
+  <!-- Tipografías -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      /* Paleta */
+      --ink:#2F3A4A; --steel:#5B6675; --panel:#E8EDF2; --accent:#F4B400;
+      --radius:18px;
+    }
+    *{ box-sizing:border-box }
+    html,body{ height:100%; margin:0 }
+
+    body{
+      min-height: 100vh;
+      background-color: #1f2733;
+      /* ✅ Fondo desde Drive (inyectado por doGet) */
+      background-image: url('<?!= bgDataUrl ?>');
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: cover;
+      background-attachment: fixed;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    .lang{ position:fixed; top:10px; right:12px; color:rgba(255,255,255,.9); font-weight:600; letter-spacing:.04em; user-select:none; }
+
+    main{ min-height:100svh; display:flex; align-items:center; justify-content:center; padding:20px; }
+
+    .card{
+      width:min(560px,94vw);
+      background: color-mix(in oklab, var(--panel) 88%, white);
+      border-radius: var(--radius);
+      box-shadow: 0 16px 40px rgba(0,0,0,.18);
+      padding: 24px 22px;
+      border: 1px solid rgba(255,255,255,.5);
+      backdrop-filter: blur(4px);
+    }
+
+    h1{ margin:0 0 14px; text-align:center; font-family: Montserrat, Inter, system-ui; font-size:24px; letter-spacing:.04em; color:#203040; }
+
+    .label{ font-size:14px; color:var(--steel); margin-bottom:6px; }
+    .field{ margin:10px 0 12px; }
+
+    .input, select{
+      width:100%; height:44px; border-radius:12px;
+      border:1px solid #c7d0da; background:rgba(255,255,255,.95);
+      color:#0f172a; padding:0 14px; outline:none;
+      transition: box-shadow .15s, border-color .15s, background .15s;
+    }
+    .input::placeholder{ color:#8a99a7; }
+    .input:focus, select:focus{ border-color:#96a4b4; box-shadow:0 0 0 3px rgba(150,164,180,.25); background:#fff; }
+
+    .row{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:6px 0 12px; }
+    .remember{ display:flex; align-items:center; gap:8px; color:var(--steel); font-size:14px; }
+
+    .btn{ width:100%; height:46px; border:0; border-radius:12px; cursor:pointer; font-weight:700; letter-spacing:.02em; }
+    .btn-primary{ background:linear-gradient(180deg, #FFD14A, var(--accent)); color:#332200; box-shadow:0 8px 22px rgba(244,180,0,.35); }
+    .btn-primary:active{ transform: translateY(1px); }
+    .btn-ghost{ background:transparent; color:#475569; border:1px solid #d7e0e8; }
+
+    .links{ text-align:center; margin-top:12px; font-size:14px; color:#334155; }
+    .links a{ color:#334155; text-decoration:none; }
+    .links a:hover{ text-decoration:underline; }
+
+    .avatar{
+      width:68px;height:68px;border-radius:50%; margin:0 auto 10px auto;
+      background:radial-gradient(circle at 30% 30%, #fff, #dfe7ef);
+      display:grid; place-items:center; color:#6b7b8c; font-size:26px; border:1px solid rgba(255,255,255,.5);
+    }
+
+    .user-top{ text-align:center; font-weight:700; letter-spacing:.05em; color:#0f172a; margin-bottom:14px; }
+
+    .grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .menu-btn{
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+      padding:18px 12px; min-height:110px;
+      background:linear-gradient(180deg, rgba(246,249,252,.95), rgba(234,241,246,.95));
+      border:1px solid rgba(255,255,255,.65);
+      border-radius:16px;
+      box-shadow: 0 12px 26px rgba(0,0,0,.18);
+      color:#1e293b; font-weight:700; text-align:center; cursor:pointer;
+      transition:transform .05s ease, background .2s ease;
+      backdrop-filter: blur(3px);
+    }
+    .menu-btn:active{ transform:translateY(1px); }
+    .menu-ico{ font-size:26px; opacity:.9; }
+    .menu-label{ font-size:15px; line-height:1.15; }
+
+    .logout{ margin-top:14px; text-align:center; }
+    .link-quiet{ color:#475569; text-decoration:none; font-size:14px; }
+    .link-quiet:hover{ text-decoration:underline; }
+
+    /* Modals */
+    .modal { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.35); padding:20px; z-index: 9999; }
+    .modal .card { max-width:520px; width:100%; }
+    .muted { color:#64748b; font-size:14px; }
+    .actions { display:flex; gap:10px; margin-top:10px; }
+    .muted-pre { font-size:.9rem; margin-top:8px; white-space:pre-line; }
+
+    /* Específicos SCATOLA */
+    #modalScatola label { display:block; margin-top:8px; font-weight:600; }
+    #modalScatola input { width:100%; padding:10px; border:1px solid #ddd; border-radius:10px; }
+
+    .is-loading{ opacity:.7; pointer-events:none; }
+  </style>
+</head>
+
+<body>
+  <div class="lang">IT | <a href="#" aria-label="Español">ES</a></div>
+
+  <main>
+    <!-- LOGIN -->
+    <form class="card" id="loginForm" autocomplete="on">
+      <div class="avatar" aria-hidden="true">👤</div>
+      <h1>USER LOGIN</h1>
+
+      <div class="field">
+        <div class="label">Email</div>
+        <input class="input" id="login_email" name="email" type="email" autocomplete="username" placeholder="es. m.rossi@azienda.it" required>
+      </div>
+
+      <div class="field">
+        <div class="label">Password</div>
+        <input class="input" id="login_password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+      </div>
+
+      <div class="row">
+        <label class="remember">
+          <input id="login_remember" type="checkbox">
+          <span>Ricordami</span>
+        </label>
+      </div>
+
+      <button class="btn btn-primary" type="submit">Accedi</button>
+
+      <div class="links">
+        <div><a href="#" id="linkForgot">Hai dimenticato la password?</a></div>
+        <div style="margin-top:6px"><a href="#" id="linkRequestAccess">Richiedi accesso</a></div>
+      </div>
+    </form>
+
+    <!-- MENÙ PRINCIPALE -->
+    <section class="card" id="menuCard" hidden>
+      <div class="user-top" id="user_name_display">ESEQUIEL BALBASTRO</div>
+
+      <div class="grid">
+        <button id="btn_scatola" class="menu-btn" type="button" aria-label="Richiedi etichetta scatola">
+          <div class="menu-ico">📦</div><div class="menu-label">Richiedi etichetta<br>scatola</div>
+        </button>
+
+        <button id="btn_scc" class="menu-btn" type="button" aria-label="Richiedi etichetta SCC">
+          <div class="menu-ico">🏷️</div><div class="menu-label">Richiedi etichetta<br>SCC</div>
+        </button>
+
+        <button id="btn_capoturno" class="menu-btn" type="button" aria-label="Richiedi Capoturno">
+          <div class="menu-ico">👷</div><div class="menu-label">Richiedi<br>Capoturno</div>
+        </button>
+
+        <button id="btn_foglio" class="menu-btn" type="button" aria-label="Foglio di produzione">
+          <div class="menu-ico">📋</div><div class="menu-label">Foglio di<br>produzione</div>
+        </button>
+      </div>
+
+      <div class="logout"><a href="#" id="logout" class="link-quiet">Esci</a></div>
+    </section>
+
+    <!-- CREA ACCOUNT -->
+    <section class="card" id="createAccountCard" hidden>
+      <h1>CREA ACCOUNT</h1>
+
+      <div class="field">
+        <div class="label">Nome</div>
+        <input class="input" id="ca_nome" type="text" placeholder="es. Maria" required>
+      </div>
+
+      <div class="field">
+        <div class="label">Cognome</div>
+        <input class="input" id="ca_cognome" type="text" placeholder="es. Rossi" required>
+      </div>
+
+      <div class="field">
+        <div class="label">Capoturno / Squadra</div>
+        <select id="ca_squad_id" required>
+          <option value="">Seleziona capoturno…</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <div class="label">Email</div>
+        <input class="input" id="ca_email" type="email" placeholder="es. maria.rossi@azienda.it" required>
+      </div>
+
+      <div class="row" style="gap:10px">
+        <button class="btn btn-primary" id="ca_submit" type="button">Crea account</button>
+        <button class="btn btn-ghost" id="ca_cancel" type="button">Annulla</button>
+      </div>
+    </section>
+
+    <!-- Modal: Forgot Password -->
+    <div id="modalForgot" class="modal" aria-hidden="true">
+      <div class="card">
+        <h3>Recupero password</h3>
+        <div class="field">
+          <div class="label">Email</div>
+          <input id="forgotEmail" class="input" type="email" required />
+        </div>
+        <div class="actions">
+          <button id="btnForgotSend" class="btn btn-primary" type="button">Invia</button>
+          <button id="btnForgotClose" class="btn btn-ghost" type="button">Chiudi</button>
+        </div>
+        <p id="forgotMsg" class="muted"></p>
+      </div>
+    </div>
+
+    <!-- Modal: Richiedi etichetta SCATOLA -->
+    <div id="modalScatola" class="modal" aria-hidden="true">
+      <div class="card">
+        <h3>Richiedi etichetta scatola</h3>
+
+        <!-- NUEVO: selector de destinatario -->
+        <div class="field">
+          <div class="label">Inviare a</div>
+          <select id="scTarget" required>
+            <option value="CAPOTURNO">Capoturno</option>
+            <option value="VICE">Vice capoturno</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label">Cliente</div>
+          <input id="scCliente" class="input" list="clientiList" placeholder="Digita per cercare…" autocomplete="off" required />
+          <datalist id="clientiList"></datalist>
+        </div>
+
+        <div class="field">
+          <div class="label">Linea</div>
+          <input id="scLinea" type="text" class="input" placeholder="Es. L4" required />
+        </div>
+
+        <div class="field">
+          <div class="label">Quantità</div>
+          <input id="scQuantita" type="number" class="input" min="1" step="1" required />
+        </div>
+
+        <div class="actions">
+          <button id="btnScChiudi" class="btn btn-ghost" type="button">Chiudi</button>
+          <button id="btnScInvia" class="btn btn-primary" type="button">Invia richiesta</button>
+        </div>
+
+        <pre id="scMsg" class="muted-pre"></pre>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>CEREAL FOOD</footer>
+
+  <!-- Inserta el bloque de NOTIFICACIONES (parcial) -->
+  <?!= HtmlService.createHtmlOutputFromFile('notifications').getContent(); ?>
+
+  <!-- JS principal (sin lógica de notificaciones) -->
+  <script>
+    // Helpers UI
+    function show(el){ el.style.display = 'grid'; el.setAttribute('aria-hidden','false'); }
+    function hide(el){ el.style.display = 'none'; el.setAttribute('aria-hidden','true'); }
+    function disable(el){ el.disabled = true; el.classList.add('is-loading'); }
+    function enable(el){ el.disabled = false; el.classList.remove('is-loading'); }
+
+    // Exponer SID global si estaba guardado (persistencia opcional)
+    (function restoreSid(){
+      try{
+        const saved = sessionStorage.getItem('CF_SID') || localStorage.getItem('CF_SID') || '';
+        if (saved) window.CF_SID = saved;
+      }catch(_){}
+    })();
+
+    document.addEventListener('DOMContentLoaded', function(){
+      // Refs base
+      const form = document.getElementById('loginForm');
+      const menuCard = document.getElementById('menuCard');
+      const loginEmail = document.getElementById('login_email');
+      const loginPass = document.getElementById('login_password');
+      const remember = document.getElementById('login_remember');
+      const userNameDisplay = document.getElementById('user_name_display');
+
+      const createCard = document.getElementById('createAccountCard');
+      const ca_nome = document.getElementById('ca_nome');
+      const ca_cognome = document.getElementById('ca_cognome');
+      const ca_squad_id = document.getElementById('ca_squad_id');
+      const ca_email = document.getElementById('ca_email');
+      const ca_submit = document.getElementById('ca_submit');
+      const ca_cancel = document.getElementById('ca_cancel');
+
+      const linkForgot = document.getElementById('linkForgot');
+      const linkRequestAccess = document.getElementById('linkRequestAccess');
+      const modalForgot = document.getElementById('modalForgot');
+      const btnForgotSend = document.getElementById('btnForgotSend');
+      const btnForgotClose = document.getElementById('btnForgotClose');
+      const forgotEmail = document.getElementById('forgotEmail');
+      const forgotMsg = document.getElementById('forgotMsg');
+
+      // Modal SCATOLA
+      const btnScatola = document.getElementById('btn_scatola');
+      const modalScatola = document.getElementById('modalScatola');
+      const btnScChiudi = document.getElementById('btnScChiudi');
+      const btnScInvia = document.getElementById('btnScInvia');
+      const scTarget = document.getElementById('scTarget');      // <-- NUEVO
+      const scCliente = document.getElementById('scCliente');
+      const scLinea = document.getElementById('scLinea');
+      const scQuantita = document.getElementById('scQuantita');
+      const scMsg = document.getElementById('scMsg');
+
+      // ---------- CLIENTI (datalist) ----------
+      let clientiCache = [];
+      let clientiIndexByName = Object.create(null);
+
+      function loadClientiIntoDatalist_(inputEl, datalistId){
+        const dl = document.getElementById(datalistId);
+        dl.innerHTML = '';
+        const optLoading = document.createElement('option');
+        optLoading.value = '';
+        optLoading.label = 'Caricamento clienti…';
+        dl.appendChild(optLoading);
+
+        google.script.run
+          .withSuccessHandler(function(list){
+            clientiCache = Array.isArray(list) ? list : [];
+            clientiIndexByName = Object.create(null);
+            dl.innerHTML = '';
+            clientiCache.forEach(c => {
+              const name = (c.cliente_name || '').trim();
+              if (!name) return;
+              const opt = document.createElement('option');
+              opt.value = name;
+              dl.appendChild(opt);
+              clientiIndexByName[name.toLowerCase()] = c;
+            });
+          })
+          .withFailureHandler(function(err){
+            dl.innerHTML = '';
+            const optErr = document.createElement('option');
+            optErr.value = '';
+            optErr.label = 'Errore caricando clienti';
+            dl.appendChild(optErr);
+            console.error('listClienti error:', (err && err.message) || err);
+          })
+          .listClienti();
+      }
+
+      function buildScPayloadValidated(){
+        const typed = (scCliente.value || '').trim();
+        const match = clientiIndexByName[typed.toLowerCase()] || null;
+        if (!match) throw new Error('Seleziona un cliente valido dalla lista.');
+        const linea = (scLinea.value || '').trim();
+        const q = parseInt(scQuantita.value, 10);
+        return { type: 'SCATOLA', cliente: match.cliente_name, linea: linea, quantita: Number.isFinite(q) ? q : 0 };
+      }
+
+      // Abrir modal SCATOLA → recarga lista
+      btnScatola.addEventListener('click', ()=>{
+        if (scTarget) scTarget.value = 'CAPOTURNO';
+        scCliente.value = '';
+        scLinea.value = '';
+        scQuantita.value = '';
+        scMsg.textContent = '';
+        loadClientiIntoDatalist_(scCliente, 'clientiList');
+        show(modalScatola);
+      });
+      btnScChiudi.addEventListener('click', ()=> hide(modalScatola));
+
+      btnScInvia.addEventListener('click', ()=>{
+        let payload;
+        try{
+          payload = buildScPayloadValidated();
+        } catch(e){
+          scMsg.style.color = '#b00';
+          scMsg.textContent = e.message || 'Cliente non valido.';
+          return;
+        }
+        if (!payload.linea || !payload.quantita || payload.quantita <= 0){
+          scMsg.style.color = '#b00';
+          scMsg.textContent = 'Completa Linea e una Quantità > 0.';
+          return;
+        }
+
+        // NUEVO: target y SID
+        const targetSel = (scTarget && scTarget.value ? scTarget.value : 'CAPOTURNO').toUpperCase();
+        payload.approver_target = targetSel;
+
+        const sid = (window && window.CF_SID) || '';
+
+        disable(btnScInvia);
+        scMsg.style.color = '#0a0';
+        scMsg.textContent = 'Invio in corso...\n' + JSON.stringify(payload, null, 2);
+
+        google.script.run
+          .withSuccessHandler(function(res){
+            enable(btnScInvia);
+            if (res && res.ok){
+              scMsg.style.color = '#0a0';
+              scMsg.textContent = (res.message || 'Richiesta inviata.') + '\n' + JSON.stringify(payload, null, 2);
+            } else {
+              scMsg.style.color = '#b00';
+              scMsg.textContent = (res && res.message) || 'Errore imprevisto.';
+            }
+          })
+          .withFailureHandler(function(err){
+            enable(btnScInvia);
+            scMsg.style.color = '#b00';
+            scMsg.textContent = 'Errore: ' + ((err && err.message) || err);
+          })
+          .api_requestsCreateOrSendV2(payload, sid);
+      });
+
+      // ---------- Recordatorio nombre ----------
+      const remembered = localStorage.getItem('cf_user') || '';
+      if (remembered) userNameDisplay.textContent = remembered.toUpperCase();
+
+      // ---------- LOGIN ----------
+      form.addEventListener('submit', (e)=>{
+        e.preventDefault();
+        const email = (loginEmail.value||'').trim();
+        const pwd = (loginPass.value||'').trim();
+        if (!email || !pwd) { alert('Inserisci email e password'); return; }
+
+        google.script.run
+          .withSuccessHandler((res)=>{
+            if (!res || !res.ok) {
+              alert(res && res.msg ? res.msg : 'Accesso negato');
+              return;
+            }
+            // Guardar SID de sesión
+            window.CF_SID = res.sid || '';
+            try{
+              sessionStorage.setItem('CF_SID', window.CF_SID);
+            }catch(_){}
+
+            const display = (res.display_name||email).toUpperCase();
+            if (remember.checked) localStorage.setItem('cf_user', display);
+            else localStorage.removeItem('cf_user');
+
+            userNameDisplay.textContent = display;
+            form.hidden = true;
+            createCard.hidden = true;
+            hide(modalForgot);
+            menuCard.hidden = false;
+
+            // Inicia/Detiene notificaciones según rol (usa API global expuesta por notifications.html)
+            if (['R001','R002','R003'].includes(res.role_id)) { window.Notif && window.Notif.start(); }
+            else { window.Notif && window.Notif.stop(); }
+          })
+          .withFailureHandler(err => alert('Errore login: ' + ((err && err.message) || err)))
+          .loginV2(email, pwd); // <-- NUEVO: login V2 con SID
+      });
+
+      // ---------- Logout ----------
+      document.getElementById('logout').addEventListener('click', (e)=>{
+        e.preventDefault();
+        window.Notif && window.Notif.stop();
+        try{
+          sessionStorage.removeItem('CF_SID');
+        }catch(_){}
+        menuCard.hidden = true;
+        createCard.hidden = true;
+        form.hidden = false;
+      });
+
+      // ---------- Abrir “Crea account” ----------
+      linkRequestAccess.addEventListener('click', (e)=>{
+        e.preventDefault();
+        form.hidden = true;
+        menuCard.hidden = true;
+        createCard.hidden = false;
+
+        ca_squad_id.innerHTML = '<option value="">Seleziona capoturno…</option>';
+
+        google.script.run
+          .withSuccessHandler((list)=>{
+            (list||[]).forEach(s=>{
+              const opt = document.createElement('option');
+              opt.value = s.squad_id;
+              opt.textContent = `${s.squad_name} — ${s.capo_name||''}`;
+              ca_squad_id.appendChild(opt);
+            });
+          })
+          .withFailureHandler(err => alert('Errore caricando capoturni: ' + ((err && err.message) || err)))
+          .listCapoturni();
+      });
+
+      // ---------- Crear account ----------
+      ca_submit.addEventListener('click', ()=>{
+        const nome = ca_nome.value.trim();
+        const cognome = ca_cognome.value.trim();
+        const squad_id = ca_squad_id.value;
+        const email = ca_email.value.trim();
+        if (!nome || !cognome || !squad_id || !email) {
+          alert('Completa Nome, Cognome, Email e Capoturno / Squadra');
+          return;
+        }
+        disable(ca_submit);
+        ca_submit.textContent = 'Creazione…';
+
+        const payload = { nome, cognome, squad_id, email };
+
+        google.script.run
+          .withSuccessHandler((res)=>{
+            enable(ca_submit);
+            ca_submit.textContent = 'Crea account';
+            if (res && res.ok) {
+              const fullName = `${nome} ${cognome}`.toUpperCase();
+              localStorage.setItem('cf_user', fullName);
+              userNameDisplay.textContent = fullName;
+              createCard.hidden = true;
+              menuCard.hidden = false;
+              const msg = res.email_sent ? 'Account creato e email inviata.' : `Account creato. (Email non inviata: ${res.error||'—'})`;
+              alert(msg);
+            } else {
+              alert('Errore creando il profilo.');
+            }
+          })
+          .withFailureHandler(err => {
+            enable(ca_submit);
+            ca_submit.textContent = 'Crea account';
+            const emsg = (err && err.message) || String(err || '');
+            if (emsg.includes('Email già registrata')) {
+              if (confirm('Email già registrata. Vuoi reimpostare la password e inviare nuove credenziali a questo indirizzo?')) {
+                google.script.run
+                  .withSuccessHandler(res => {
+                    alert(res.email_sent ? 'Password reimpostata e email inviata.' : 'Password reimpostata ma email non inviata: ' + (res.error || '—'));
+                  })
+                  .withFailureHandler(e2 => alert('Errore nel reset della password: ' + ((e2 && e2.message) || e2)))
+                  .resetPassword(email);
+              }
+              return;
+            }
+            alert('Errore creando account: ' + emsg);
+          })
+          .createOperator(payload);
+      });
+
+      ca_cancel.addEventListener('click', ()=>{
+        createCard.hidden = true;
+        form.hidden = false;
+      });
+
+      // ---------- Forgot password ----------
+      linkForgot.addEventListener('click', (e)=>{
+        e.preventDefault();
+        forgotEmail.value = (loginEmail.value||'').trim();
+        forgotMsg.textContent = '';
+        show(modalForgot);
+      });
+      btnForgotClose.addEventListener('click', ()=> hide(modalForgot));
+      btnForgotSend.addEventListener('click', ()=>{
+        const email = (forgotEmail.value||'').trim();
+        if (!email) {
+          forgotMsg.textContent = 'Inserisci una email valida.';
+          forgotMsg.style.color = '#b00';
+          return;
+        }
+        disable(btnForgotSend);
+        forgotMsg.textContent = 'Invio in corso...';
+        forgotMsg.style.color = '#0a0';
+
+        google.script.run
+          .withSuccessHandler((res)=>{
+            enable(btnForgotSend);
+            if (res && res.ok) {
+              forgotMsg.textContent = 'Email inviata con le istruzioni.';
+              forgotMsg.style.color = '#0a0';
+            } else {
+              forgotMsg.textContent = (res && res.message) || 'Impossibile inviare.';
+              forgotMsg.style.color = '#b00';
+            }
+          })
+          .withFailureHandler(err=>{
+            enable(btnForgotSend);
+            forgotMsg.textContent = 'Errore: ' + ((err && err.message) || err);
+            forgotMsg.style.color = '#b00';
+          })
+          .resetPassword(email);
+      });
+    });
+  </script>
+</body>
+<?!= HtmlService.createHtmlOutputFromFile('capoturno').getContent(); ?>
+</html>

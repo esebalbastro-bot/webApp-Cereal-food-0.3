@@ -1,0 +1,220 @@
+<!-- BLOQUE EXCLUSIVO DE NOTIFICACIONES -->
+<style>
+  :root{
+    --notif-fs: clamp(18px, 4vw, 20px);
+    --notif-pad-y: clamp(12px, 3.6vw, 16px);
+    --notif-pad-x: clamp(16px, 5vw, 22px);
+    --notif-gap: clamp(12px, 3.6vw, 16px);
+    --notif-dot: clamp(14px, 3.8vw, 18px);
+    --accent:#F4B400;
+  }
+  .notif{
+    position:fixed;
+    left:12px; right:auto; bottom:16px;
+    display:flex; align-items:center; gap:var(--notif-gap);
+    background:rgba(255,255,255,.82);
+    backdrop-filter: blur(8px);
+    padding: var(--notif-pad-y) var(--notif-pad-x);
+    border-radius:14px;
+    color:#0f172a; font-weight:700;
+    border:1px solid rgba(255,255,255,.75);
+    cursor:pointer;
+    box-shadow:0 12px 32px rgba(0,0,0,.22);
+    font-size: var(--notif-fs);
+    line-height:1.25;
+    z-index:9999;
+    -webkit-tap-highlight-color: transparent;
+    max-width: 94vw;
+  }
+  .notif:focus-visible{ outline:3px solid rgba(244,180,0,.5) }
+  .notif strong{ font-size:1.05em; }
+  .dot{ width:var(--notif-dot); height:var(--notif-dot); border-radius:50%; background:var(--accent); box-shadow:0 0 0 6px rgba(244,180,0,.22); flex:0 0 auto; }
+  @media (max-width: 600px){
+    .notif{ left:12px !important; right:12px !important; bottom: calc(16px + env(safe-area-inset-bottom)) !important; background: rgba(255,255,255,.9) !important; }
+  }
+  @keyframes notifPulse { 0%{transform:scale(1);box-shadow:0 0 0 0 rgba(244,180,0,.45)} 50%{transform:scale(1.03);box-shadow:0 0 0 12px rgba(244,180,0,0)} 100%{transform:scale(1);box-shadow:0 0 0 0 rgba(244,180,0,0)} }
+  .notif--pulse { animation: notifPulse 900ms ease-out 0s 2; }
+</style>
+
+<div class="notif" id="notif" role="button" tabindex="0" aria-label="Apri notifiche">
+  <span class="dot" aria-hidden="true"></span>
+  <span>Notifiche</span>
+  <strong id="notifCount" style="margin-left:6px">0</strong>
+</div>
+
+<div id="modalApprovals" class="modal" aria-hidden="true">
+  <div class="card">
+    <h3>Notifiche in attesa</h3>
+    <div id="apprList" class="muted" style="max-height:50vh; overflow:auto"></div>
+    <div class="actions">
+      <button id="btnApprClose" class="btn btn-ghost" type="button">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<audio id="notifSound" preload="auto">
+  <source src="data:audio/wav;base64,UklGRmQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAAgAAAAAAAAgACAgICAgP//AACAgICAgP//AACAgICAgP//AACAgAAAAAA=" type="audio/wav">
+</audio>
+
+<script>
+(function(){
+  const el = {
+    notif: document.getElementById('notif'),
+    count: document.getElementById('notifCount'),
+    modal: document.getElementById('modalApprovals'),
+    list:  document.getElementById('apprList'),
+    close: document.getElementById('btnApprClose'),
+    beep:  document.getElementById('notifSound')
+  };
+
+  (function boostNotifForMobile(){
+    const isTouch = window.matchMedia('(pointer:coarse)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (!isTouch || !el.notif) return;
+    Object.assign(el.notif.style, {
+      left: '12px', right: '12px',
+      bottom: 'calc(16px + env(safe-area-inset-bottom))',
+      padding: '16px 20px', fontSize: '20px', lineHeight: '1.25',
+      borderRadius: '14px', background: 'rgba(255,255,255,.92)',
+      boxShadow: '0 12px 32px rgba(0,0,0,.25)', zIndex: '99999', maxWidth: '94vw'
+    });
+    const dot = el.notif.querySelector('.dot');
+    if (dot) { dot.style.width = '18px'; dot.style.height = '18px'; dot.style.boxShadow = '0 0 0 6px rgba(244,180,0,.22)'; dot.style.flex = '0 0 auto'; }
+  })();
+
+  (function unlockSoundOnFirstInteraction(){
+    const once = () => {
+      if (!el.beep) return;
+      el.beep.play().then(()=>{ el.beep.pause(); el.beep.currentTime=0; }).catch(()=>{});
+      document.removeEventListener('click', once);
+      document.removeEventListener('touchstart', once);
+    };
+    document.addEventListener('click', once, { once:true });
+    document.addEventListener('touchstart', once, { once:true, passive:true });
+  })();
+
+  let pollTimer = null, lastCount = 0, firstTick = true;
+
+  function pulseAndBeep(newCount){
+    try {
+      if (el.notif){ el.notif.classList.add('notif--pulse'); setTimeout(()=> el.notif.classList.remove('notif--pulse'), 2000); }
+      if (el.beep){ el.beep.currentTime = 0; el.beep.play().catch(()=>{}); }
+      if (navigator.vibrate) navigator.vibrate([160,80,160]);
+    } catch(_) {}
+    lastCount = newCount;
+  }
+
+  function renderItems(items){
+    if (!items || !items.length){
+      el.list.innerHTML = '<div>Nessuna notifica in attesa.</div>';
+      return;
+    }
+    el.list.innerHTML = '';
+    items.forEach(it=>{
+      if (it.type === 'SCATOLA'){
+        const div = document.createElement('div');
+        div.style.border='1px solid #e2e8f0'; div.style.borderRadius='10px';
+        div.style.padding='10px'; div.style.margin='8px 0';
+        div.innerHTML = `
+          <div><strong>SCATOLA</strong> • ${it.request_id}</div>
+          <div>Cliente: ${it.cliente} — Linea: ${it.linea} — Quantità: ${it.quantita}</div>
+          <div class="muted">Creato: ${new Date(it.created_at).toLocaleString()}</div>
+          <div class="actions" style="margin-top:8px; gap:8px">
+            <button class="btn btn-primary" data-type="SCATOLA" data-act="approve" data-id="${it.request_id}">Approva</button>
+            <button class="btn btn-ghost" data-type="SCATOLA" data-act="reject"  data-id="${it.request_id}">Rifiuta</button>
+          </div>
+        `;
+        el.list.appendChild(div);
+      } else if (it.type === 'ASSISTENZA'){
+        const div = document.createElement('div');
+        div.style.border='1px solid #e2e8f0'; div.style.borderRadius='10px';
+        div.style.padding='10px'; div.style.margin='8px 0';
+        div.innerHTML = `
+          <div><strong>ASSISTENZA • ${it.target}</strong> • ${it.assist_id}</div>
+          <div>Linea: ${it.linea}</div>
+          <div>Messaggio: ${it.message || '—'}</div>
+          <div class="muted">Richiedente: ${it.requester_email || '—'} • Creato: ${new Date(it.created_at).toLocaleString()}</div>
+          <div class="actions" style="margin-top:8px; gap:8px">
+            <button class="btn btn-primary" data-type="ASSISTENZA" data-act="ack" data-id="${it.assist_id}">Segna come gestita</button>
+          </div>
+        `;
+        el.list.appendChild(div);
+      }
+    });
+
+    // Bind acciones
+    el.list.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id  = btn.getAttribute('data-id');
+        const act = btn.getAttribute('data-act');
+        const typ = btn.getAttribute('data-type');
+
+        if (typ === 'SCATOLA'){
+          if (act === 'approve'){
+            btn.disabled = true; btn.textContent = 'Invio...';
+            google.script.run
+              .withSuccessHandler(r=>{ alert(r && r.ok ? 'Approvata e inviata a Make.' : (r && r.message) || 'Errore'); openModal(); })
+              .withFailureHandler(e=> alert('Errore: ' + ((e && e.message) || e)))
+              .api_approveRequest(id, true, '');
+          } else if (act === 'reject'){
+            const why = prompt('Motivo del rifiuto (opzionale):','') || '';
+            google.script.run
+              .withSuccessHandler(r=>{ alert(r && r.ok ? 'Richiesta rifiutata.' : (r && r.message) || 'Errore'); openModal(); })
+              .withFailureHandler(e=> alert('Errore: ' + ((e && e.message) || e)))
+              .api_approveRequest(id, false, why);
+          }
+        } else if (typ === 'ASSISTENZA'){
+          if (act === 'ack'){
+            btn.disabled = true; btn.textContent = 'Salvataggio...';
+            google.script.run
+              .withSuccessHandler(r=>{ alert(r && r.ok ? 'Assistenza segnata come gestita.' : (r && r.message) || 'Errore'); openModal(); })
+              .withFailureHandler(e=> alert('Errore: ' + ((e && e.message) || e)))
+              .api_ackAssistenza(id);
+          }
+        }
+      });
+    });
+  }
+
+  function tick(){
+  const sid = (window && window.CF_SID) || '';
+  if (!sid) return; // aún sin sesión: evitamos llamar al server
+
+  google.script.run
+    .withSuccessHandler(res=>{
+      const n = (res && res.ok) ? (res.total||0) : 0;
+      if (el.count) el.count.textContent = String(n);
+      if (firstTick){ lastCount = n; firstTick = false; }
+      else if (n > lastCount && n > 0){ pulseAndBeep(n); }
+      else { lastCount = n; }
+    })
+    .withFailureHandler(()=>{})
+    .api_countNotificationsForCapoV2(sid);
+}
+
+function start(){ stop(); tick(); pollTimer = setInterval(tick, 15000); }
+function stop(){ if (pollTimer){ clearInterval(pollTimer); pollTimer = null; } if (el.count) el.count.textContent='0'; lastCount=0; firstTick=true; }
+
+function openModal(){
+  if (!el.modal) return;
+  const sid = (window && window.CF_SID) || '';
+  if (!sid) return; // sin sesión, no abrimos listado
+
+  el.list.textContent = 'Caricamento...';
+  el.modal.style.display='grid';
+  el.modal.setAttribute('aria-hidden','false');
+
+  google.script.run
+    .withSuccessHandler(res=>{ renderItems((res && res.ok && Array.isArray(res.items)) ? res.items : []); })
+    .withFailureHandler(err=>{ el.list.textContent = 'Errore: ' + ((err && err.message) || err); })
+    .api_listNotificationsForCapoV2(sid);
+}
+
+el.notif && el.notif.addEventListener('click', openModal);
+el.notif && el.notif.addEventListener('keydown', (e)=>{ if (e.key==='Enter'||e.key===' '){ e.preventDefault(); openModal(); }});
+el.close && el.close.addEventListener('click', ()=>{ el.modal.style.display='none'; el.modal.setAttribute('aria-hidden','true'); });
+
+// API pública para index.html
+window.Notif = { start, stop, open: openModal };
+})();
+</script>
+
